@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "WetterOnline",
-        "description": "Ort eingeben. Bei mehrdeutigen Namen (z. B. mehrere Orte namens „Neustadt") kannst du im nächsten Schritt den richtigen auswählen.",
+        "description": "Ort eingeben. Bei mehrdeutigen Namen (z. B. mehrere Orte namens »Neustadt«) kannst du im nächsten Schritt den richtigen auswählen.",
         "data": {
           "query": "Ort"
         }

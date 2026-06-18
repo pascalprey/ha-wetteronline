@@ -64,7 +64,7 @@ Copy `custom_components/wetteronline/` into your Home Assistant
 ## Setup
 
 *Settings → Devices & Services → Add Integration → "WetterOnline"*, then type a
-location (e.g. "Neustadt"). If the name is ambiguous, a picker lets you choose the
+location. If the name is ambiguous, a picker lets you choose the
 right place (region shown in brackets). Add multiple locations as separate
 entries. The polling interval is adjustable via the entry's *Configure* button
 (default 30 min, minimum 10 min).

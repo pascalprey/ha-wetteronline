@@ -578,7 +578,7 @@ class WetterOnlineClient:
         """Resolve a free-text query to candidate locations for disambiguation.
 
         Uses ``/autosuggest`` for distinct, region-qualified names (e.g.
-        "Neustadt, Brandenburg" vs "Neustadt, Bayern"), then resolves each to its
+        "Neustadt, Sachsen" vs "Neustadt, Hessen"), then resolves each to its
         ``/wetter/<slug>`` URL so the user can pick the right one.
         """
         query = query.strip()

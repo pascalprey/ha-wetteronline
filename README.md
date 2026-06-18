@@ -20,24 +20,31 @@ Vorhersagedaten: aktuelle Lage, 48 Stunden stündlich und bis zu 16 Tage.
 
 ## Funktionen
 
-- **`weather.<ort>`-Entität** mit:
-  - aktueller Temperatur, Zustand und Windrichtung
-  - **stündlicher** Vorhersage (~48 h): Temperatur, Zustand, Regenwahrscheinlichkeit
-  - **täglicher** Vorhersage (bis 16 Tage): Max/Min-Temperatur, Zustand,
-    Regenwahrscheinlichkeit, Niederschlagsmenge (mm), Wind & Böen
+- **`weather.<ort>`-Entität** mit aktuellen Werten und Vorhersagen:
+  - aktuell: Temperatur, gefühlte Temperatur, Taupunkt, Luftfeuchte, Luftdruck,
+    Wind/Böen/Richtung, Sichtweite, UV-Index, Zustand
+  - **stündlich** (~48 h) und **täglich** (bis 14 Tage), jeweils mit Temperatur,
+    gefühlter Temperatur, Feuchte, Druck, Wind/Böen, Regenwahrscheinlichkeit,
+    Niederschlagsmenge (mm, täglich) und UV-Index (täglich)
 - **Zusätzliche Sensoren** je Ort:
-  - Temperatur, Windrichtung
-  - Sonnenaufgang / Sonnenuntergang (Zeitstempel), Sonnenstand (°)
-  - Höchst-/Tiefsttemperatur heute, Niederschlag heute (mm),
-    Regenwahrscheinlichkeit heute, Sonnenstunden heute, Windböen heute
+  - Temperatur, gefühlte Temperatur, Taupunkt, Luftfeuchte, Luftdruck,
+    Wind/Böen/Richtung, Sichtweite, UV-Index, Regenwahrscheinlichkeit
+  - Sonnenaufgang/-untergang, Sonnenstunden heute, Höchst-/Tiefsttemperatur heute,
+    Niederschlag heute
+  - **Pollenflug** (14 Allergene, Belastung 0–3, 7-Tage-Vorhersage als Attribut)
+  - **Unwetterwarnungen** (Anzahl + Details als Attribut)
+  - optional (standardmäßig deaktiviert): Sonnenstand, Luftdrucktendenz,
+    Smog-Level, Tageslänge, Mondphase, Mondauf-/-untergang
 
 ## Datenquelle & Grenzen
 
 Die Daten stammen aus der server-seitig gerenderten Seite
-`https://www.wetteronline.de/wetter/<ort>`. Auf der **freien** Seite gibt es
-**keine** Werte für Luftfeuchte, Luftdruck, gefühlte Temperatur oder UV-Index –
-diese sind daher nicht enthalten. Die stündliche Vorhersage enthält keine
-Windrichtung (nur die tägliche).
+`https://www.wetteronline.de/wetter/<ort>`, genauer aus dem darin eingebetteten
+Angular-State (`ng-state`), der die Antworten von WetterOnlines Backend-API
+spiegelt – ein einziger GET liefert alles. **Nicht enthalten:** ein numerischer
+Bewölkungsgrad (%) gibt es im Datensatz nicht (nur Zustand/Symbol und
+Sonnenstunden). Stündliche Niederschlagsmenge in mm ist ebenfalls nicht
+verfügbar (nur tägliche).
 
 ## Installation
 

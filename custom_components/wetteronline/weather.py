@@ -10,7 +10,9 @@ from homeassistant.components.weather import (
     WeatherEntityFeature,
 )
 from homeassistant.const import (
+    UnitOfLength,
     UnitOfPrecipitationDepth,
+    UnitOfPressure,
     UnitOfSpeed,
     UnitOfTemperature,
 )
@@ -26,7 +28,7 @@ from .coordinator import WetterOnlineConfigEntry, WetterOnlineCoordinator
 
 
 def _localize(iso: str | None) -> str | None:
-    """Turn a naive local ISO date/datetime string into an aware ISO string."""
+    """Return an ISO 8601 string with a timezone for HA's forecast parsing."""
     if not iso:
         return None
     dt = dt_util.parse_datetime(iso)
@@ -50,7 +52,7 @@ async def async_setup_entry(
 
 
 class WetterOnlineWeather(CoordinatorEntity[WetterOnlineCoordinator], WeatherEntity):
-    """A weather entity backed by the scraped wetteronline.de city page."""
+    """A weather entity backed by the wetteronline.de city page."""
 
     _attr_attribution = ATTRIBUTION
     _attr_has_entity_name = True
@@ -58,6 +60,8 @@ class WetterOnlineWeather(CoordinatorEntity[WetterOnlineCoordinator], WeatherEnt
     _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_native_wind_speed_unit = UnitOfSpeed.KILOMETERS_PER_HOUR
     _attr_native_precipitation_unit = UnitOfPrecipitationDepth.MILLIMETERS
+    _attr_native_pressure_unit = UnitOfPressure.HPA
+    _attr_native_visibility_unit = UnitOfLength.KILOMETERS
     _attr_supported_features = (
         WeatherEntityFeature.FORECAST_DAILY | WeatherEntityFeature.FORECAST_HOURLY
     )
@@ -90,15 +94,44 @@ class WetterOnlineWeather(CoordinatorEntity[WetterOnlineCoordinator], WeatherEnt
         return self._data.current.temperature
 
     @property
+    def native_apparent_temperature(self) -> float | None:
+        return self._data.current.apparent_temperature
+
+    @property
+    def native_dew_point(self) -> float | None:
+        return self._data.current.dew_point
+
+    @property
+    def humidity(self) -> float | None:
+        return self._data.current.humidity
+
+    @property
+    def native_pressure(self) -> float | None:
+        return self._data.current.pressure
+
+    @property
+    def native_visibility(self) -> float | None:
+        cur = self._data.current.visibility
+        if cur is not None:
+            return cur
+        return self._data.hourly[0].visibility if self._data.hourly else None
+
+    @property
     def wind_bearing(self) -> float | None:
         return self._data.current.wind_bearing
 
     @property
     def native_wind_speed(self) -> float | None:
-        # WetterOnline does not expose a current wind *speed* number on the free
-        # page; use today's forecast value as a reasonable proxy.
-        daily = self._data.daily
-        return daily[0].wind_speed if daily else None
+        return self._data.current.wind_speed
+
+    @property
+    def native_wind_gust_speed(self) -> float | None:
+        return self._data.current.wind_gust_speed
+
+    @property
+    def uv_index(self) -> float | None:
+        # The current block has no UV value; expose today's daily UV index.
+        return self._data.daily[0].uv_index if self._data.daily else None
 
     def _build_daily(self) -> list[Forecast]:
         out: list[Forecast] = []
@@ -109,6 +142,10 @@ class WetterOnlineWeather(CoordinatorEntity[WetterOnlineCoordinator], WeatherEnt
                     condition=d.condition,
                     native_temperature=d.temperature,
                     native_templow=d.templow,
+                    native_apparent_temperature=d.apparent_temperature,
+                    humidity=d.humidity,
+                    native_pressure=d.pressure,
+                    uv_index=d.uv_index,
                     precipitation_probability=d.precipitation_probability,
                     native_precipitation=d.precipitation,
                     wind_bearing=d.wind_bearing,
@@ -126,7 +163,15 @@ class WetterOnlineWeather(CoordinatorEntity[WetterOnlineCoordinator], WeatherEnt
                     datetime=_localize(h.datetime),
                     condition=h.condition,
                     native_temperature=h.temperature,
+                    native_apparent_temperature=h.apparent_temperature,
+                    native_dew_point=h.dew_point,
+                    humidity=h.humidity,
+                    native_pressure=h.pressure,
                     precipitation_probability=h.precipitation_probability,
+                    wind_bearing=h.wind_bearing,
+                    native_wind_speed=h.wind_speed,
+                    native_wind_gust_speed=h.wind_gust_speed,
+                    native_visibility=h.visibility,
                 )
             )
         return out

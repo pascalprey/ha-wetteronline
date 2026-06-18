@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "WetterOnline",
-        "description": "Enter a town or city to look up on wetteronline.de.",
+        "description": "Enter a town or city. If the name is ambiguous (e.g. several towns called \"Neustadt\"), you can pick the right one in the next step.",
         "data": {
           "query": "Location"
         }

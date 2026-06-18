@@ -59,6 +59,11 @@ class WoSensorDescription(SensorEntityDescription):
     """Describes a WetterOnline sensor."""
 
     value_fn: Callable[[WeatherData], StateType | datetime]
+    attr_fn: Callable[[WeatherData], dict] | None = None
+
+
+def _convection(data: WeatherData) -> StateType:
+    return data.hourly[0].convection_probability if data.hourly else None
 
 
 SENSORS: tuple[WoSensorDescription, ...] = (
@@ -144,6 +149,23 @@ SENSORS: tuple[WoSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:weather-sunny-alert",
         value_fn=lambda d: getattr(_day0(d), "uv_index", None),
+        attr_fn=lambda d: {"description": getattr(_day0(d), "uv_description", None)},
+    ),
+    WoSensorDescription(
+        key="water_temperature",
+        name="Wassertemperatur",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:pool-thermometer",
+        value_fn=lambda d: d.water_temperature,
+    ),
+    WoSensorDescription(
+        key="convection_probability",
+        name="Gewitterneigung",
+        native_unit_of_measurement=PERCENTAGE,
+        icon="mdi:weather-lightning",
+        value_fn=_convection,
     ),
     WoSensorDescription(
         key="sunshine_hours",
@@ -246,6 +268,32 @@ SENSORS: tuple[WoSensorDescription, ...] = (
         entity_registry_enabled_default=False,
         value_fn=lambda d: _ts(d.astro.moonset),
     ),
+    WoSensorDescription(
+        key="precipitation_type",
+        name="Niederschlagsart",
+        icon="mdi:weather-pouring",
+        entity_registry_enabled_default=False,
+        value_fn=lambda d: d.current.precipitation_type,
+    ),
+    WoSensorDescription(
+        key="significant_weather",
+        name="Signifikantes Wetter",
+        icon="mdi:weather-cloudy-alert",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda d: getattr(_day0(d), "significant_weather", None),
+    ),
+    # Prose forecast text is WetterOnline's copyrighted editorial content; off by
+    # default. The full text lives in the "full_text" attribute (state is capped
+    # at HA's 255-char limit).
+    WoSensorDescription(
+        key="forecast_text",
+        name="Wetterbericht heute",
+        icon="mdi:text-long",
+        entity_registry_enabled_default=False,
+        value_fn=lambda d: (d.forecast_text or None) and d.forecast_text[:255],
+        attr_fn=lambda d: {"full_text": d.forecast_text},
+    ),
 )
 
 
@@ -304,6 +352,12 @@ class WetterOnlineSensor(_WoBaseEntity):
     @property
     def native_value(self) -> StateType | datetime:
         return self.entity_description.value_fn(self.coordinator.data)
+
+    @property
+    def extra_state_attributes(self) -> dict | None:
+        if self.entity_description.attr_fn is None:
+            return None
+        return self.entity_description.attr_fn(self.coordinator.data)
 
 
 class WetterOnlinePollenSensor(_WoBaseEntity):

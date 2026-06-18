@@ -3,14 +3,14 @@
     "step": {
       "user": {
         "title": "WetterOnline",
-        "description": "Gib einen Ort ein, der auf wetteronline.de nachgeschlagen werden soll.",
+        "description": "Ort eingeben. Bei mehrdeutigen Namen (z. B. mehrere Orte namens „Neustadt") kannst du im nächsten Schritt den richtigen auswählen.",
         "data": {
           "query": "Ort"
         }
       },
       "select": {
         "title": "Ort auswählen",
-        "description": "Mehrere Orte passen zur Suche. Bitte den richtigen auswählen.",
+        "description": "Mehrere Orte passen zu deiner Suche. Bitte den richtigen auswählen (Region in Klammern).",
         "data": {
           "selection": "Ort"
         }

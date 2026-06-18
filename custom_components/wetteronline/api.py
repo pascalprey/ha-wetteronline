@@ -96,6 +96,7 @@ class CurrentConditions:
     condition: str | None = None
     condition_text: str | None = None  # German, e.g. "sonnig"
     precipitation_probability: int | None = None
+    precipitation_type: str | None = None  # rain / snow / ...
     smog_level: str | None = None
     solar_elevation: float | None = None
     visibility: float | None = None  # km
@@ -111,6 +112,7 @@ class HourlyForecast:
     pressure: float | None = None
     condition: str | None = None
     precipitation_probability: int | None = None
+    convection_probability: int | None = None  # thunderstorm likelihood %
     wind_bearing: float | None = None
     wind_speed: float | None = None
     wind_gust_speed: float | None = None
@@ -126,11 +128,14 @@ class DailyForecast:
     humidity: int | None = None
     pressure: float | None = None
     uv_index: int | None = None
+    uv_description: str | None = None  # e.g. "moderate", "very_high"
     sunshine_hours: float | None = None
     sunshine_relative: int | None = None  # % of possible sunshine
     condition: str | None = None
     precipitation_probability: int | None = None
     precipitation: float | None = None  # mm
+    precipitation_type: str | None = None  # rain / snow / ...
+    significant_weather: str | None = None  # significant_weather_index
     wind_bearing: float | None = None
     wind_speed: float | None = None
     wind_gust_speed: float | None = None
@@ -174,6 +179,8 @@ class WeatherData:
     astro: Astro = field(default_factory=Astro)
     pollen: list[PollenDay] = field(default_factory=list)
     warnings: list[Warning] = field(default_factory=list)
+    water_temperature: float | None = None  # °C of nearby water, if any
+    forecast_text: str | None = None  # today's prose forecast (copyrighted)
 
 
 # --- value helpers -----------------------------------------------------------
@@ -202,6 +209,12 @@ def _probability(d) -> int | None:
     if not isinstance(d, dict):
         return None
     n = _num(d.get("probability"))
+    return round(n * 100) if n is not None else None
+
+
+def _percent(value) -> int | None:
+    """Fraction (0.7) -> 70."""
+    n = _num(value)
     return round(n * 100) if n is not None else None
 
 
@@ -288,6 +301,8 @@ def parse_weather(raw_html: str, *, now: date | None = None) -> WeatherData:
     _parse_astro(_find(state, "/astro/days/"), data, now)
     _parse_pollen(_find(state, "/pollen/v4"), data)
     _parse_warnings(_find(state, "/warnings/"), data)
+    _parse_water(_find(state, "weather/water"), data, now)
+    _parse_text(_find(state, "/blending/texts/"), data, now)
     return data
 
 
@@ -323,6 +338,8 @@ def _parse_current(short: dict | None, data: WeatherData) -> None:
     c.wind_bearing, c.wind_speed, c.wind_gust_speed = _wind(cur.get("wind"))
     c.condition = _condition(cur.get("symbol"), cur.get("weather_condition_image"))
     c.precipitation_probability = _probability(cur.get("precipitation"))
+    if isinstance(cur.get("precipitation"), dict):
+        c.precipitation_type = cur["precipitation"].get("type")
     c.smog_level = cur.get("smog_level")
     c.solar_elevation = _num(cur.get("solar_elevation"))
     c.visibility = _visibility_km(cur.get("visibility"))
@@ -348,6 +365,7 @@ def _parse_hourly(short: dict | None, data: WeatherData) -> None:
                 pressure=_pressure(h.get("air_pressure")),
                 condition=_condition(h.get("symbol"), h.get("weather_condition_image")),
                 precipitation_probability=_probability(h.get("precipitation")),
+                convection_probability=_percent(h.get("convection_probability")),
                 wind_bearing=bearing,
                 wind_speed=speed,
                 wind_gust_speed=gust,
@@ -382,9 +400,16 @@ def _parse_daily(
             humidity=_humidity(d.get("humidity")),
             pressure=_pressure(d.get("air_pressure")),
             uv_index=_int(uv.get("value")),
+            uv_description=uv.get("description"),
             sunshine_hours=_num(sun.get("hours")),
             condition=_condition(d.get("symbol"), d.get("weather_condition_image")),
             precipitation_probability=_probability(d.get("precipitation")),
+            precipitation_type=(
+                d["precipitation"].get("type")
+                if isinstance(d.get("precipitation"), dict)
+                else None
+            ),
+            significant_weather=d.get("significant_weather_index"),
             wind_bearing=bearing,
             wind_speed=speed,
             wind_gust_speed=gust,
@@ -451,6 +476,35 @@ def _parse_warnings(warnings, data: WeatherData) -> None:
                 end=w.get("end") or w.get("end_time"),
             )
         )
+
+
+def _parse_water(water: dict | None, data: WeatherData, now: date | None) -> None:
+    """Nearby water (lake/sea) temperature, when WetterOnline reports one."""
+    if not isinstance(water, dict):
+        return
+    days = water.get("days", []) or []
+    ref = (now or date.today()).isoformat()
+    chosen = next(
+        (d for d in days if isinstance(d, dict) and str(d.get("date", "")).startswith(ref)),
+        days[0] if days else None,
+    )
+    if isinstance(chosen, dict):
+        temp = chosen.get("temperature", {}) or {}
+        data.water_temperature = _num(temp.get("water"))
+
+
+def _parse_text(texts, data: WeatherData, now: date | None) -> None:
+    """Today's prose forecast text (note: this is copyrighted WetterOnline content)."""
+    if not isinstance(texts, list):
+        return
+    ref = (now or date.today()).isoformat()
+    chosen = next(
+        (t for t in texts if isinstance(t, dict) and str(t.get("date", "")).startswith(ref)),
+        texts[0] if texts else None,
+    )
+    if isinstance(chosen, dict) and chosen.get("text"):
+        # Strip the inline <WO...>value</WO...> template tags, keeping the value.
+        data.forecast_text = re.sub(r"</?WO[^>]*>", "", chosen["text"]).strip()
 
 
 def _int(value) -> int | None:
@@ -521,18 +575,32 @@ class WetterOnlineClient:
         return await resp.text()
 
     async def async_search_locations(self, query: str) -> list[LocationResult]:
-        """Resolve a free-text query to one or more location slugs."""
+        """Resolve a free-text query to candidate locations for disambiguation.
+
+        Uses ``/autosuggest`` for distinct, region-qualified names (e.g.
+        "Neustadt, Brandenburg" vs "Neustadt, Bayern"), then resolves each to its
+        ``/wetter/<slug>`` URL so the user can pick the right one.
+        """
         query = query.strip()
         if not query:
             return []
-        results = await self._search_slugs(query)
+
+        results: list[LocationResult] = []
+        seen_slugs: set[str] = set()
+        seen_names: set[str] = set()
+        for name in await self._autosuggest(query):
+            if name in seen_names:
+                continue
+            seen_names.add(name)
+            slugs = await self._search_slugs(name)
+            if slugs and slugs[0].slug not in seen_slugs:
+                seen_slugs.add(slugs[0].slug)
+                results.append(LocationResult(name=name, slug=slugs[0].slug))
         if results:
             return results
-        for name in await self._autosuggest(query):
-            res = await self._search_slugs(name)
-            if res:
-                return [LocationResult(name=name, slug=res[0].slug)]
-        return []
+
+        # Fallback: the search endpoint's own best match.
+        return await self._search_slugs(query)
 
     async def _search_slugs(self, query: str) -> list[LocationResult]:
         resp = await self._get(

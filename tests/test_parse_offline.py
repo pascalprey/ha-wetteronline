@@ -9,7 +9,7 @@ sys.path.insert(0, str(ROOT / "custom_components" / "wetteronline"))
 
 import api  # noqa: E402
 
-SAMPLE = Path.home() / "ha-wo-recon2" / "neustadt.html"
+SAMPLE = Path.home() / "ha-wo-audit" / "bb.html"
 
 
 def main() -> None:
@@ -49,6 +49,12 @@ def main() -> None:
                 print(f"  {name}: {lvl} ({api.POLLEN_LEVELS.get(lvl)})")
 
     print(f"\nWARNINGS: {len(data.warnings)}")
+    print(f"WATER TEMP: {data.water_temperature} °C")
+    print(f"UV DESC (today): {getattr(data.daily[0], 'uv_description', None)}")
+    print(f"CONVECTION (h0): {data.hourly[0].convection_probability}%")
+    print(f"PRECIP TYPE (now): {data.current.precipitation_type}")
+    print(f"SIG WEATHER (today): {data.daily[0].significant_weather}")
+    print(f"FORECAST TEXT: {(data.forecast_text or '')[:90]}...")
 
     assert c.temperature is not None, "current temp missing"
     assert c.pressure is not None, "pressure missing"

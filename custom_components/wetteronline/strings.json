@@ -1,0 +1,41 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "WetterOnline",
+        "description": "Enter a town or city to look up on wetteronline.de.",
+        "data": {
+          "query": "Location"
+        }
+      },
+      "select": {
+        "title": "Select location",
+        "description": "Several locations matched your search. Pick the right one.",
+        "data": {
+          "selection": "Location"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach wetteronline.de. Please try again.",
+      "not_found": "No matching location was found. Try a different spelling."
+    },
+    "abort": {
+      "already_configured": "This location is already configured.",
+      "cannot_connect": "Could not reach wetteronline.de."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "WetterOnline options",
+        "data": {
+          "scan_interval": "Update interval (minutes)"
+        },
+        "data_description": {
+          "scan_interval": "How often to fetch wetteronline.de. Keep this polite (30 minutes is plenty)."
+        }
+      }
+    }
+  }
+}

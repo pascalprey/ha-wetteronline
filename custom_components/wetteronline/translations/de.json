@@ -1,0 +1,41 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "WetterOnline",
+        "description": "Gib einen Ort ein, der auf wetteronline.de nachgeschlagen werden soll.",
+        "data": {
+          "query": "Ort"
+        }
+      },
+      "select": {
+        "title": "Ort auswählen",
+        "description": "Mehrere Orte passen zur Suche. Bitte den richtigen auswählen.",
+        "data": {
+          "selection": "Ort"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "wetteronline.de ist nicht erreichbar. Bitte erneut versuchen.",
+      "not_found": "Kein passender Ort gefunden. Andere Schreibweise versuchen."
+    },
+    "abort": {
+      "already_configured": "Dieser Ort ist bereits eingerichtet.",
+      "cannot_connect": "wetteronline.de ist nicht erreichbar."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "WetterOnline-Optionen",
+        "data": {
+          "scan_interval": "Aktualisierungsintervall (Minuten)"
+        },
+        "data_description": {
+          "scan_interval": "Wie oft wetteronline.de abgefragt wird. Bitte fair bleiben (30 Minuten reichen)."
+        }
+      }
+    }
+  }
+}
